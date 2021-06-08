@@ -1,19 +1,21 @@
 // Set some global parameters.
-VERSION_NUMBER = '1.0 beta'
+VERSION_NUMBER = '1.1 beta'
 START_TIME_COLUMN = 1;
 END_TIME_COLUMN = 3;
 EVENT_ID_COLUMN = 4;
 EVENT_FIRST_ROW = 5;
 EVENT_NAME_COLUMN = 5;
-DESCRIPTION_COLUMN_FIRST = 6;
-DESCRIPTION_COLUMN_LAST = 7;
+DESCRIPTION_COLUMN_FIRST_CELL = "D1";
+DESCRIPTION_COLUMN_LAST_CELL = "D2";
 DESCRIPTION_DELIMINATOR = "\r\n---\r\n";
 USE_DESCRIPTION_HEADERS = true;
 CALENDAR_ID_CELL = "B2";
 CALENDAR_NAME_CELL = "B1";
 
-// Get the current sheet. It will be needed.
+// Get the current sheet and load some values. It will be needed.
 SHEET = SpreadsheetApp.getActiveSheet();
+DESCRIPTION_COLUMN_FIRST = SHEET.getRange(DESCRIPTION_COLUMN_FIRST_CELL).getValue();
+DESCRIPTION_COLUMN_LAST = SHEET.getRange(DESCRIPTION_COLUMN_LAST_CELL).getValue();
 
 // Adds a menu when the spreadsheet is opened.
 function onOpen(e) {
@@ -98,7 +100,7 @@ function event_range_validate() {
 function event_build_description(data_row) {
   var description = [];
   for (c in data_row) {
-    if (parseInt(c) + 1 >= DESCRIPTION_COLUMN_FIRST && parseInt(c) + 1 <= DESCRIPTION_COLUMN_LAST) {
+    if (parseInt(c) + 1 >= DESCRIPTION_COLUMN_FIRST && parseInt(c) + 1 <= DESCRIPTION_COLUMN_LAST && data_row[c].length > 0) {
       // Add the header if the option for this is enabled.
       if (USE_DESCRIPTION_HEADERS) {
         data_row[c] = SHEET.getRange(EVENT_FIRST_ROW - 1, parseInt(c) + 1).getValue() + "\r\n" + data_row[c];
@@ -142,7 +144,11 @@ function calendar_delete() {
 
 // Displays a popup for finding help and more.
 function about() {
-  alert("För mer information, se https://github.com/Itangalo/kursplaneringGo.");
+  var htmlOutput = HtmlService
+    .createHtmlOutput("<p>För mer information, se <a href='https://github.com/Itangalo/kursplaneringGo' target='_blank'>github.com/Itangalo/kursplaneringGo</a>.</p>")
+    .setWidth(350)
+    .setHeight(100);
+  SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Om Kursplaning Go ' + VERSION_NUMBER);
 }
 
 // Helper function for displaying messages to the user.
