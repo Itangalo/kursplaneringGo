@@ -5,6 +5,7 @@ Enkel integration mellan Google Spreadsheet och Google Calendar, för kursplaner
 
 Videoguider:
 
+* Hel videoserie som visar det mesta av verktyget i 2–3 minuter korta videor: https://www.youtube.com/watch?v=sffYfpw2ue4&list=PL5sq4vtv3sTHAHfNNbRwSZNl5rpi7GrsA
 * Video som visar hur du kommer igång: https://youtu.be/2OIdw5jeItY
 * Video som visar hur du flyttar runt planering exempelvis för att lektioner blir inställda en dag: https://youtu.be/DWazLndmKJQ
 
