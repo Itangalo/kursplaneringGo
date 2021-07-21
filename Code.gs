@@ -1,5 +1,5 @@
 // Set some global parameters.
-VERSION_NUMBER = '1.3 beta'
+VERSION_NUMBER = '1.4 beta'
 START_TIME_COLUMN = 1;
 END_TIME_COLUMN = 3;
 EVENT_ID_COLUMN = 4;
@@ -27,7 +27,7 @@ function onOpen(e) {
       .addItem('Skapa/uppdatera valda kalenderhändelser', 'event_update')
       .addItem('Radera valda kalenderhändelser', 'event_delete')
       .addSeparator()
-      .addItem('Läs in kalenderhändelser', 'calendar_delete')
+      .addItem('Läs in kalenderhändelser', 'calendar_read')
       .addSeparator()
       .addItem('Radera hela kalendern', 'calendar_delete')
       .addSeparator()
