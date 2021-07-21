@@ -1,7 +1,7 @@
 # Kursplanering Go
-Enkel integration mellan Google Spreadsheet och Google Calendar, för kursplanering med mera.
+Grundläggande integration mellan Google Spreadsheet och Google Calendar, för kursplanering med mera.
 
-Än så länge i tidigt beta-läge, men fungerar.
+Än så länge i beta-läge, men fungerar.
 
 Videoguider:
 
@@ -14,3 +14,10 @@ Använd det här kalkylbladet för att komma igång: https://docs.google.com/spr
 Steg för att använda:
 1) Skapa en egen kopia genom arkivmenyn, skapa kopia.
 2) Godkänn behörigheter för skriptet.
+
+### Funktioner
+
+* Kan skapa en Google-kalender och lägga in markerade händelser (lektioner) med angiven startid, sluttider, rubrik och beskrivning.
+* Kan uppdatera markerade händelser (lektioner) i Google-kalendern för att avspegla ändringar i kalkylbladet.
+* Kan läsa in Google-kalender och lägga in data för händelser (lektioner) i kalkylbladet. Uppdaterar befintliga händelser om de redan finns. **Nytt för 1.3 beta.**
+* Kan radera Google-kalendern (om man verkligen vill).
