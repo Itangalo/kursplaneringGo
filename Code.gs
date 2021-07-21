@@ -1,5 +1,5 @@
 // Set some global parameters.
-VERSION_NUMBER = '1.2 beta'
+VERSION_NUMBER = '1.3 beta'
 START_TIME_COLUMN = 1;
 END_TIME_COLUMN = 3;
 EVENT_ID_COLUMN = 4;
@@ -7,7 +7,7 @@ EVENT_FIRST_ROW = 5;
 EVENT_NAME_COLUMN = 5;
 DESCRIPTION_COLUMN_FIRST_CELL = "D1";
 DESCRIPTION_COLUMN_LAST_CELL = "D2";
-DESCRIPTION_DELIMINATOR = "\r\n---\r\n";
+DESCRIPTION_DELIMINATOR = "\n---\n";
 USE_DESCRIPTION_HEADERS_CELL = "F1";
 CALENDAR_ID_CELL = "B2";
 CALENDAR_NAME_CELL = "B1";
@@ -17,6 +17,8 @@ SHEET = SpreadsheetApp.getActiveSheet();
 DESCRIPTION_COLUMN_FIRST = SHEET.getRange(DESCRIPTION_COLUMN_FIRST_CELL).getValue();
 DESCRIPTION_COLUMN_LAST = SHEET.getRange(DESCRIPTION_COLUMN_LAST_CELL).getValue();
 USE_DESCRIPTION_HEADERS = SHEET.getRange(USE_DESCRIPTION_HEADERS_CELL).getValue();
+FIRST_COLUMN = Math.min(START_TIME_COLUMN, END_TIME_COLUMN, EVENT_NAME_COLUMN, EVENT_ID_COLUMN, DESCRIPTION_COLUMN_FIRST);
+LAST_COLUMN = Math.max(START_TIME_COLUMN, END_TIME_COLUMN, EVENT_NAME_COLUMN, EVENT_ID_COLUMN, DESCRIPTION_COLUMN_LAST);
 
 // Adds a menu when the spreadsheet is opened.
 function onOpen(e) {
@@ -24,6 +26,8 @@ function onOpen(e) {
       .createMenu('Kursplanering Go')
       .addItem('Skapa/uppdatera valda kalenderhändelser', 'event_update')
       .addItem('Radera valda kalenderhändelser', 'event_delete')
+      .addSeparator()
+      .addItem('Läs in kalenderhändelser', 'calendar_delete')
       .addSeparator()
       .addItem('Radera hela kalendern', 'calendar_delete')
       .addSeparator()
@@ -38,13 +42,17 @@ function event_update() {
   if (!event_range_validate()) {
     return false;
   }
+  // Verify that the user may create/update events.
+  var cal = calendar_get();
+  if (!cal.isOwnedByMe() && !calendar_editable(cal)) {
+    throw 'You do not have permission to update events in this calendar.';
+  }
   // Get the data for the selected rows.
   var start_row = SpreadsheetApp.getActiveRange().getRow();
   var row_span = SpreadsheetApp.getActiveRange().getNumRows();
   var last_column = Math.max(START_TIME_COLUMN, END_TIME_COLUMN, EVENT_ID_COLUMN, EVENT_NAME_COLUMN, DESCRIPTION_COLUMN_LAST);
   var data = SHEET.getRange(start_row, 1, row_span, last_column).getValues();
   // Create or update events based on the selected rows.
-  var cal = calendar_get();
   for (e in data) {
     var id = data[e][EVENT_ID_COLUMN - 1];
     if (id) {
@@ -71,13 +79,17 @@ function event_delete() {
   if (!event_range_validate()) {
     return false;
   }
+  // Verify that the user may create events.
+  var cal = calendar_get();
+  if (!cal.isOwnedByMe() && !calendar_editable(cal)) {
+    throw 'You do not have permission to delete events in this calendar.';
+  }
   // Get the data for the selected rows.
   var start_row = SpreadsheetApp.getActiveRange().getRow();
   var row_span = SpreadsheetApp.getActiveRange().getNumRows();
   var last_column = Math.max(START_TIME_COLUMN, END_TIME_COLUMN, EVENT_ID_COLUMN, EVENT_NAME_COLUMN, DESCRIPTION_COLUMN_LAST);
   var data = SHEET.getRange(start_row, 1, row_span, last_column).getValues();
   // Delete all events that have IDs.
-  var cal = calendar_get();
   for (e in data) {
     var id = data[e][EVENT_ID_COLUMN - 1];
     if (id) {
@@ -85,6 +97,48 @@ function event_delete() {
       event.deleteEvent();
       SHEET.getRange(start_row + parseInt(e), EVENT_ID_COLUMN).clear();
     }
+  }
+}
+
+// Reads calendar events from -1 to +1 year and populates the spreadsheet.
+function calendar_read() {
+  var cal = calendar_get();
+  // Get all event IDs currently listed.
+  var event_ids = SHEET.getRange(EVENT_FIRST_ROW, EVENT_ID_COLUMN, SHEET.getLastRow() - EVENT_FIRST_ROW + 1, 1).getValues();
+  event_ids = event_ids.map(i => i[0]);
+  // Get all events from -1 to +1 year from now.
+  var start_date = new Date();
+  start_date.setFullYear(start_date.getFullYear() - 1);
+  var end_date = new Date();
+  end_date.setFullYear(end_date.getFullYear() + 1);
+  var events = cal.getEvents(start_date, end_date);
+
+  // Create or update events, as appropriate.
+  for (e in events) {
+    // Read current data from sheet, if the event ID exists. Otherwise pick new line.
+    var row = event_ids.indexOf(events[e].getId());
+    if (row < 0) {
+      row = 1 + SHEET.getLastRow();
+    }
+    else {
+      row = row + EVENT_FIRST_ROW;
+    }
+    var selection = SHEET.getRange(row, 1, 1, LAST_COLUMN);
+    var data = selection.getValues()[0];
+
+    // Populate the sheet with data from the event.
+    data[START_TIME_COLUMN - 1] = events[e].getStartTime();
+    data[END_TIME_COLUMN - 1] = events[e].getEndTime();
+    data[EVENT_NAME_COLUMN - 1] = events[e].getTitle();
+    data[EVENT_ID_COLUMN - 1] = events[e].getId();
+    var description = event_parse_description(events[e].getDescription());
+    for (i in description) {
+      if (!description[i]) {
+        description[i] = '';
+      }
+      data[DESCRIPTION_COLUMN_FIRST - 1 + parseInt(i)] = description[i];
+    }
+    selection.setValues([data]);
   }
 }
 
@@ -112,8 +166,42 @@ function event_build_description(data_row) {
   return description.join(DESCRIPTION_DELIMINATOR);
 }
 
+// Attempts to build a description in separate cells from a plain-text event description.
+// Returns an array of the same size as the number of description headers.
+function event_parse_description(description_string) {
+  var parts = description_string.split(DESCRIPTION_DELIMINATOR);
+  var num_headers = DESCRIPTION_COLUMN_LAST - DESCRIPTION_COLUMN_FIRST + 1;
+  var headers = SHEET.getRange(EVENT_FIRST_ROW - 1, DESCRIPTION_COLUMN_FIRST, 1, num_headers).getValues()[0];
+  var output = [];
+  output[num_headers - 1] = null; // Ensure that the output array has sufficient length.
+  // First try to find description parts starting with the headers in the spreadsheet.
+  var match = false;
+  for (var c in headers) {
+    for (var p in parts) {
+      // If the start of the descrption part matches the header, add it to the output and remove that line.
+      if (parts[p].substr(0, headers[c].length) == headers[c]) {
+        output[c] = parts[p].substr(headers[c].length).trim();
+        parts.splice(p, 1);
+        match = true;
+      }
+    }
+  }
+  // If there is no header match, assume that the description parts map trivialy to the description columns.
+  if (!match) {
+    for (var c in headers) {
+      output[c] = parts.shift();
+    }
+  }
+  // If there are any description parts left, append them to the last description column.
+  if (parts.length) {
+    output[num_headers - 1] = output[num_headers - 1] + DESCRIPTION_DELIMINATOR + parts.join(DESCRIPTION_DELIMINATOR);
+  }
+  return output;
+}
+
 // Helper function for loading the relevant calendar. Creates one if none exists.
 function calendar_get(skip_create) {
+  // Create a new calendar if no calendar ID exists. Unless it should be skipped.
   if (SHEET.getRange(CALENDAR_ID_CELL).isBlank()) {
     if (skip_create) {
       return false;
@@ -124,8 +212,25 @@ function calendar_get(skip_create) {
   }
   else {
     var cal = CalendarApp.getCalendarById(SHEET.getRange(CALENDAR_ID_CELL).getValue());
+    if (cal == null) {
+      throw 'Invalid calendar ID.';
+    }
   }
   return cal;
+}
+
+// Returns true if the user may edit the calendar, otherwise false.
+function calendar_editable(cal) {
+  try {
+    var e = cal.createEvent('Temporary event',
+    new Date(),
+    new Date());
+  }
+  catch(error) {
+    return false;
+  }
+  e.deleteEvent();
+  return true;
 }
 
 // Deletes the calendar for the sheet (along with any events).
@@ -135,6 +240,10 @@ function calendar_delete() {
     alert('Det finns ingen kalender att radera.');
     return;
   }
+  if (!cal.isOwnedByMe()) {
+    throw 'You do not have permission to delete the calendar.';
+  }
+
   cal.deleteCalendar();
   // Clear calendar ID and all event IDs.
   SHEET.getRange(CALENDAR_ID_CELL).clear();
