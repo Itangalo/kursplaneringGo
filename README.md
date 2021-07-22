@@ -23,6 +23,7 @@ Steg för att använda:
 * Kan läsa in Google-kalender och lägga in data för händelser (lektioner) i kalkylbladet. Uppdaterar befintliga händelser om de redan finns. **Nytt för 1.3 beta.**
 * Kan synka plats/sal för lektioner mellan kalkylblad och kalender. **Nytt för 1.5 beta.**
 * Kan radera Google-kalendern (om man verkligen vill).
+* I en [experimentell version av skriptet](https://github.com/Itangalo/kursplaneringGo/tree/G-Classroom) finns också funktioner för att skapa meddelanden i Google Classroom för varje lektion. Se även #2 i ärendekön.
 
 ## Vad gör funktionerna i menyn?
 
