@@ -21,6 +21,7 @@ Steg för att använda:
 * Kan skapa en Google-kalender och lägga in markerade händelser (lektioner) med angiven startid, sluttider, rubrik och beskrivning.
 * Kan uppdatera markerade händelser (lektioner) i Google-kalendern för att avspegla ändringar i kalkylbladet.
 * Kan läsa in Google-kalender och lägga in data för händelser (lektioner) i kalkylbladet. Uppdaterar befintliga händelser om de redan finns. **Nytt för 1.3 beta.**
+* Kan synka plats/sal för lektioner mellan kalkylblad och kalender. **Nytt för 1.5 beta.**
 * Kan radera Google-kalendern (om man verkligen vill).
 
 ## Vad gör funktionerna i menyn?
