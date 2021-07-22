@@ -1,15 +1,18 @@
 // Set some global parameters.
-VERSION_NUMBER = '1.5 beta'
+VERSION_NUMBER = '1.6 beta EXPERIMENTAL'
 START_TIME_COLUMN = 1;
 END_TIME_COLUMN = 3;
 EVENT_ID_COLUMN = 4;
 EVENT_FIRST_ROW = 5;
 EVENT_NAME_COLUMN = 5;
 EVENT_LOCATION_COLUMN = 6;
+ANNOUNCEMENT_TEXT_COLUMN = 13;
+ANNOUNCEMENT_TIME_COLUMN = 12;
 DESCRIPTION_COLUMN_FIRST_CELL = "D1";
 DESCRIPTION_COLUMN_LAST_CELL = "D2";
 DESCRIPTION_DELIMINATOR = "\n---\n";
 USE_DESCRIPTION_HEADERS_CELL = "F1";
+COURSE_ID_CELL = "L1";
 CALENDAR_ID_CELL = "B2";
 CALENDAR_NAME_CELL = "B1";
 
@@ -18,7 +21,8 @@ SHEET = SpreadsheetApp.getActiveSheet();
 DESCRIPTION_COLUMN_FIRST = SHEET.getRange(DESCRIPTION_COLUMN_FIRST_CELL).getValue();
 DESCRIPTION_COLUMN_LAST = SHEET.getRange(DESCRIPTION_COLUMN_LAST_CELL).getValue();
 USE_DESCRIPTION_HEADERS = SHEET.getRange(USE_DESCRIPTION_HEADERS_CELL).getValue();
-LAST_COLUMN = Math.max(START_TIME_COLUMN, END_TIME_COLUMN, EVENT_ID_COLUMN, EVENT_NAME_COLUMN, EVENT_LOCATION_COLUMN, DESCRIPTION_COLUMN_LAST);
+LAST_COLUMN = Math.max(START_TIME_COLUMN, END_TIME_COLUMN, EVENT_ID_COLUMN, EVENT_NAME_COLUMN, EVENT_LOCATION_COLUMN, DESCRIPTION_COLUMN_LAST, ANNOUNCEMENT_TEXT_COLUMN, ANNOUNCEMENT_TIME_COLUMN);
+COURSE_ID = SHEET.getRange(COURSE_ID_CELL).getValue();
 
 // Adds a menu when the spreadsheet is opened.
 function onOpen(e) {
@@ -32,6 +36,9 @@ function onOpen(e) {
       .addItem('Radera hela kalendern', 'calendar_delete')
       .addSeparator()
       .addItem('Om Kursplanering Go ' + VERSION_NUMBER, 'about')
+      .addSeparator()
+      .addItem('Schemalägg Classroom-meddelanden (EXPERIMENTAL)', 'create_announcements')
+      .addItem('Lista ID:n för Classroom-klasser (EXPERIMENTAL)', 'find_course_id')
       .addToUi();
 }
 
@@ -90,8 +97,7 @@ function event_delete() {
   // Get the data for the selected rows.
   var start_row = SpreadsheetApp.getActiveRange().getRow();
   var row_span = SpreadsheetApp.getActiveRange().getNumRows();
-  var last_column = Math.max(START_TIME_COLUMN, END_TIME_COLUMN, EVENT_ID_COLUMN, EVENT_NAME_COLUMN, DESCRIPTION_COLUMN_LAST);
-  var data = SHEET.getRange(start_row, 1, row_span, last_column).getValues();
+  var data = SHEET.getRange(start_row, 1, row_span, LAST_COLUMN).getValues();
   // Delete all events that have IDs.
   for (e in data) {
     var id = data[e][EVENT_ID_COLUMN - 1];
@@ -144,6 +150,13 @@ function calendar_read() {
     }
     selection.setValues([data]);
   }
+}
+
+// Helper function getting data from the selected rows.
+function get_selected_row_data() {
+  var start_row = SpreadsheetApp.getActiveRange().getRow();
+  var row_span = SpreadsheetApp.getActiveRange().getNumRows();
+  return SHEET.getRange(start_row, 1, row_span, LAST_COLUMN).getValues();
 }
 
 // Verifies that the selected range only includes event rows.
@@ -268,4 +281,40 @@ function about() {
 // Helper function for displaying messages to the user.
 function alert(message) {
   SpreadsheetApp.getUi().alert(message);
+}
+
+// Schedules announcements in Google Classroom, for selected rows.
+function create_announcements() {
+  if (!event_range_validate()) {
+    return false;
+  }
+  var data = get_selected_row_data();
+  for (d in data) {
+    announcement = {
+      'text': data[d][ANNOUNCEMENT_TEXT_COLUMN - 1],
+    };
+
+    // Scheduling can only be done for future times.
+    announce_time = new Date(data[d][ANNOUNCEMENT_TIME_COLUMN - 1]);
+    var now = new Date();
+    if (announce_time > now) {
+      announcement.state = 'DRAFT';
+      announcement.scheduledTime = announce_time.toISOString();
+    }
+    Classroom.Courses.Announcements.create(announcement, COURSE_ID);
+  }
+}
+
+// Displayes a pop-up with all course names and IDs.
+function find_course_id() {
+  var courses = Classroom.Courses.list().courses;
+  var output = [];
+  if (courses && courses.length > 0) {
+    for (c in courses) {
+      output.push(courses[c].name + ': ' + courses[c].id);
+    }
+  } else {
+    output.push('No courses found.');
+  }
+  alert(output.join("\n"));
 }
