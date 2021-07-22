@@ -1,10 +1,11 @@
 // Set some global parameters.
-VERSION_NUMBER = '1.4 beta'
+VERSION_NUMBER = '1.5 beta'
 START_TIME_COLUMN = 1;
 END_TIME_COLUMN = 3;
 EVENT_ID_COLUMN = 4;
 EVENT_FIRST_ROW = 5;
 EVENT_NAME_COLUMN = 5;
+EVENT_LOCATION_COLUMN = 6;
 DESCRIPTION_COLUMN_FIRST_CELL = "D1";
 DESCRIPTION_COLUMN_LAST_CELL = "D2";
 DESCRIPTION_DELIMINATOR = "\n---\n";
@@ -17,8 +18,7 @@ SHEET = SpreadsheetApp.getActiveSheet();
 DESCRIPTION_COLUMN_FIRST = SHEET.getRange(DESCRIPTION_COLUMN_FIRST_CELL).getValue();
 DESCRIPTION_COLUMN_LAST = SHEET.getRange(DESCRIPTION_COLUMN_LAST_CELL).getValue();
 USE_DESCRIPTION_HEADERS = SHEET.getRange(USE_DESCRIPTION_HEADERS_CELL).getValue();
-FIRST_COLUMN = Math.min(START_TIME_COLUMN, END_TIME_COLUMN, EVENT_NAME_COLUMN, EVENT_ID_COLUMN, DESCRIPTION_COLUMN_FIRST);
-LAST_COLUMN = Math.max(START_TIME_COLUMN, END_TIME_COLUMN, EVENT_NAME_COLUMN, EVENT_ID_COLUMN, DESCRIPTION_COLUMN_LAST);
+LAST_COLUMN = Math.max(START_TIME_COLUMN, END_TIME_COLUMN, EVENT_ID_COLUMN, EVENT_NAME_COLUMN, EVENT_LOCATION_COLUMN, DESCRIPTION_COLUMN_LAST);
 
 // Adds a menu when the spreadsheet is opened.
 function onOpen(e) {
@@ -50,8 +50,7 @@ function event_update() {
   // Get the data for the selected rows.
   var start_row = SpreadsheetApp.getActiveRange().getRow();
   var row_span = SpreadsheetApp.getActiveRange().getNumRows();
-  var last_column = Math.max(START_TIME_COLUMN, END_TIME_COLUMN, EVENT_ID_COLUMN, EVENT_NAME_COLUMN, DESCRIPTION_COLUMN_LAST);
-  var data = SHEET.getRange(start_row, 1, row_span, last_column).getValues();
+  var data = SHEET.getRange(start_row, 1, row_span, LAST_COLUMN).getValues();
   // Create or update events based on the selected rows.
   for (e in data) {
     var id = data[e][EVENT_ID_COLUMN - 1];
@@ -60,13 +59,17 @@ function event_update() {
       event.setTime(data[e][START_TIME_COLUMN - 1], data[e][END_TIME_COLUMN - 1]);
       event.setTitle(data[e][EVENT_NAME_COLUMN - 1]);
       event.setDescription(event_build_description(data[e]));
+      event.setLocation(data[e][EVENT_LOCATION_COLUMN - 1]);
     }
     else {
       var event = cal.createEvent(
         data[e][EVENT_NAME_COLUMN - 1],
         new Date(data[e][START_TIME_COLUMN - 1]),
         new Date(data[e][END_TIME_COLUMN - 1]),
-        {description: event_build_description(data[e])}
+        {
+          description: event_build_description(data[e]),
+          location: data[e][EVENT_LOCATION_COLUMN - 1]
+        }
       );
       SHEET.getRange(start_row + parseInt(e), EVENT_ID_COLUMN).setValue(event.getId());
     }
@@ -131,6 +134,7 @@ function calendar_read() {
     data[END_TIME_COLUMN - 1] = events[e].getEndTime();
     data[EVENT_NAME_COLUMN - 1] = events[e].getTitle();
     data[EVENT_ID_COLUMN - 1] = events[e].getId();
+    data[EVENT_LOCATION_COLUMN - 1] = events[e].getLocation();
     var description = event_parse_description(events[e].getDescription());
     for (i in description) {
       if (!description[i]) {
